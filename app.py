@@ -60,20 +60,35 @@ SHEET_HEADERS = [
 
 @st.cache_resource(show_spinner=False)
 def get_google_credentials():
-    """Ambil credentials dari st.secrets. Menangani semua format private_key."""
-    service_account_info = dict(st.secrets["gcp_service_account"])
+    """Ambil credentials dari st.secrets dengan penanganan private_key yang robust."""
+    sa = dict(st.secrets["gcp_service_account"])
 
-    pk = service_account_info["private_key"]
+    # Ambil private key dan normalisasi format apapun yang mungkin masuk
+    pk = sa["private_key"]
 
-    # Hapus Windows line endings jika ada
+    # Kasus 1: Windows line endings
     pk = pk.replace("\r\n", "\n")
 
-    # Konversi literal backslash-n menjadi newline asli
+    # Kasus 2: literal backslash-n (dari copy-paste JSON langsung ke TOML)
     if "\\n" in pk:
         pk = pk.replace("\\n", "\n")
 
-    service_account_info["private_key"] = pk
-    creds = Credentials.from_service_account_info(service_account_info, scopes=SCOPES)
+    # Kasus 3: spasi berlebih di header/footer PEM saja (bukan di baris base64)
+    lines = pk.split("\n")
+    cleaned = []
+    for line in lines:
+        stripped = line.strip()
+        # Hanya strip baris header/footer PEM dan baris kosong
+        if stripped.startswith("-----") or stripped == "":
+            cleaned.append(stripped)
+        else:
+            cleaned.append(line)  # baris base64: jangan diubah
+    pk = "\n".join(cleaned)
+    if not pk.endswith("\n"):
+        pk += "\n"
+
+    sa["private_key"] = pk
+    creds = Credentials.from_service_account_info(sa, scopes=SCOPES)
     return creds
 
 
@@ -156,6 +171,7 @@ def upload_to_drive(drive_service, file_bytes: bytes, filename: str, folder_id: 
         body=file_metadata,
         media_body=media,
         fields="id",
+        supportsAllDrives=True,
     ).execute()
 
     file_id = uploaded_file.get("id")
@@ -164,6 +180,7 @@ def upload_to_drive(drive_service, file_bytes: bytes, filename: str, folder_id: 
     drive_service.permissions().create(
         fileId=file_id,
         body={"type": "anyone", "role": "reader"},
+        supportsAllDrives=True,
     ).execute()
 
     # Buat link direct view
