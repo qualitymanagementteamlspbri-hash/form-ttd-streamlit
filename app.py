@@ -326,51 +326,30 @@ def render_form():
 
         # Alat Bantu Pendeteksi Keaslian Uang
         alat_bantu = st.selectbox("Alat Bantu Pendeteksi Keaslian Uang *", DROPDOWN_ALAT_BANTU)
-        alat_bantu_lainnya = ""
-        if alat_bantu == "Lainnya":
-            alat_bantu_lainnya = st.text_input(
-                "Jika merek Alat Bantu tidak ada di daftar, tulis di sini *",
-                placeholder="Tulis merek alat bantu Anda",
-            )
-        elif alat_bantu not in ("-- Pilih --",):
-            st.text_input(
-                "Jika merek Alat Bantu tidak ada di daftar, tulis di sini (opsional)",
-                placeholder="Opsional jika memilih selain 'Lainnya'",
-                disabled=True,
-                key="alat_bantu_lainnya_disabled",
-            )
+        _label_ab = "Jika merek Alat Bantu tidak ada di daftar, tulis di sini *" if alat_bantu == "Lainnya" else "Jika merek Alat Bantu tidak ada di daftar, tulis di sini (opsional)"
+        alat_bantu_lainnya = st.text_input(
+            _label_ab,
+            placeholder="Tulis merek alat bantu Anda jika tidak ada di daftar",
+            key="alat_bantu_lainnya",
+        )
 
         # Mesin Hitung Uang
         mesin_hitung = st.selectbox("Mesin Hitung Uang *", DROPDOWN_MESIN_HITUNG)
-        mesin_hitung_lainnya = ""
-        if mesin_hitung == "Lainnya":
-            mesin_hitung_lainnya = st.text_input(
-                "Jika merek Mesin Hitung tidak ada di daftar, tulis di sini *",
-                placeholder="Tulis merek mesin hitung Anda",
-            )
-        elif mesin_hitung not in ("-- Pilih --",):
-            st.text_input(
-                "Jika merek Mesin Hitung tidak ada di daftar, tulis di sini (opsional)",
-                placeholder="Opsional jika memilih selain 'Lainnya'",
-                disabled=True,
-                key="mesin_hitung_lainnya_disabled",
-            )
+        _label_mh = "Jika merek Mesin Hitung tidak ada di daftar, tulis di sini *" if mesin_hitung == "Lainnya" else "Jika merek Mesin Hitung tidak ada di daftar, tulis di sini (opsional)"
+        mesin_hitung_lainnya = st.text_input(
+            _label_mh,
+            placeholder="Tulis merek mesin hitung Anda jika tidak ada di daftar",
+            key="mesin_hitung_lainnya",
+        )
 
         # Komputer dan Printer
         komputer_printer = st.selectbox("Komputer dan Printer *", DROPDOWN_KOMPUTER_PRINTER)
-        komputer_printer_lainnya = ""
-        if komputer_printer == "Lainnya":
-            komputer_printer_lainnya = st.text_input(
-                "Jika pilihan Komputer dan Printer tidak ada di daftar, tulis di sini *",
-                placeholder="Tulis spesifikasi Anda",
-            )
-        elif komputer_printer not in ("-- Pilih --",):
-            st.text_input(
-                "Jika pilihan Komputer dan Printer tidak ada di daftar, tulis di sini (opsional)",
-                placeholder="Opsional jika memilih selain 'Lainnya'",
-                disabled=True,
-                key="komputer_printer_lainnya_disabled",
-            )
+        _label_kp = "Jika pilihan Komputer dan Printer tidak ada di daftar, tulis di sini *" if komputer_printer == "Lainnya" else "Jika pilihan Komputer dan Printer tidak ada di daftar, tulis di sini (opsional)"
+        komputer_printer_lainnya = st.text_input(
+            _label_kp,
+            placeholder="Tulis spesifikasi Anda jika tidak ada di daftar",
+            key="komputer_printer_lainnya",
+        )
 
         st.divider()
         submitted = st.form_submit_button(
