@@ -63,10 +63,28 @@ def get_google_credentials():
     """
     Ambil credentials dari st.secrets (service account JSON).
     Di-cache agar tidak rebuild setiap interaksi.
+    Menangani semua variasi format private_key:
+      - literal \n  (dari TOML single-quote / copy-paste JSON)
+      - \r\n        (Windows line endings)
+      - newline asli (dari TOML triple-quote)
     """
     service_account_info = dict(st.secrets["gcp_service_account"])
-    # Pastikan private_key newline diparse dengan benar
-    service_account_info["private_key"] = service_account_info["private_key"].replace("\\n", "\n")
+
+    pk = service_account_info["private_key"]
+
+    # Normalisasi Windows line endings (
+ → 
+)
+    pk = pk.replace("\r\n", "\n")
+
+    # Jika private_key berisi literal 
+ (dua karakter: \ + n),
+    # konversi ke newline asli. Ini terjadi saat copy-paste dari JSON.
+    # Cukup cek apakah belum ada newline asli di dalam key.
+    if "\\n" in pk:
+        pk = pk.replace("\\n", "\n")
+
+    service_account_info["private_key"] = pk
     creds = Credentials.from_service_account_info(service_account_info, scopes=SCOPES)
     return creds
 
