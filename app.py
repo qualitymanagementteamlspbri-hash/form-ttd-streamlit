@@ -8,7 +8,6 @@ Author: Senior Python Developer
 import streamlit as st
 import gspread
 import io
-import imghdr
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
