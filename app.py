@@ -141,56 +141,50 @@ def validate_png_file(uploaded_file) -> tuple[bool, str]:
 
 
 # ─────────────────────────────────────────────
-# UPLOAD KE CLOUDINARY
+# UPLOAD KE GOOGLE DRIVE VIA APPS SCRIPT
 # ─────────────────────────────────────────────
 
-def upload_to_cloudinary(file_bytes: bytes, filename: str) -> str:
+def upload_via_apps_script(file_bytes: bytes, filename: str) -> str:
     """
-    Upload file PNG ke Cloudinary (production-grade image hosting).
-    Free plan: 25 kredit/bulan — cukup untuk ribuan TTD.
+    Upload file PNG ke Google Drive milik akun Gmail admin
+    menggunakan Google Apps Script sebagai perantara.
+    File diupload atas nama akun Gmail (bukan service account),
+    sehingga tidak ada masalah storage quota.
 
     Returns:
-        URL secure file di Cloudinary
+        URL shareable file di Google Drive
     """
-    import hashlib
-    import time
+    apps_script_url = st.secrets["apps_script"]["web_app_url"]
+    secret_token    = st.secrets["apps_script"]["secret_token"]
+    folder_id       = st.secrets["apps_script"]["folder_id"]
 
-    cloud_name = st.secrets["cloudinary"]["cloud_name"]
-    api_key    = st.secrets["cloudinary"]["api_key"]
-    api_secret = st.secrets["cloudinary"]["api_secret"]
+    # Encode file ke base64 untuk dikirim via JSON
+    b64_data = base64.b64encode(file_bytes).decode("utf-8")
 
-    # Buat signature untuk authenticated upload
-    timestamp  = str(int(time.time()))
-    folder     = "ttd_peserta"
-    public_id  = filename.replace(".png", "")
-
-    # String yang di-sign: harus urut alphabetically
-    sign_str = f"folder={folder}&public_id={public_id}&timestamp={timestamp}{api_secret}"
-    signature = hashlib.sha1(sign_str.encode("utf-8")).hexdigest()
-
-    upload_url = f"https://api.cloudinary.com/v1_1/{cloud_name}/image/upload"
+    payload = {
+        "token":     secret_token,
+        "filename":  filename,
+        "folder_id": folder_id,
+        "file_data": b64_data,
+    }
 
     response = requests.post(
-        upload_url,
-        data={
-            "api_key":   api_key,
-            "timestamp": timestamp,
-            "signature": signature,
-            "folder":    folder,
-            "public_id": public_id,
-        },
-        files={"file": (filename, file_bytes, "image/png")},
+        apps_script_url,
+        json=payload,
         timeout=60,
     )
 
     if response.status_code != 200:
-        raise Exception(f"Cloudinary upload gagal: {response.status_code} — {response.text}")
+        raise Exception(
+            f"Apps Script error {response.status_code}: {response.text}"
+        )
 
     result = response.json()
-    if "secure_url" not in result:
-        raise Exception(f"Cloudinary error: {result}")
 
-    return result["secure_url"]
+    if result.get("status") != "success":
+        raise Exception(f"Apps Script gagal: {result.get('message', result)}")
+
+    return result["url"]
 
 
 # ─────────────────────────────────────────────
@@ -459,8 +453,8 @@ def main():
             safe_pn = re.sub(r"[^a-zA-Z0-9]", "_", form_data["personal_number"])
             filename = f"TTD_{safe_pn}_{safe_name}_{timestamp_str}.png"
 
-            # Upload ke Cloudinary
-            drive_link = upload_to_cloudinary(
+            # Upload ke Google Drive via Apps Script
+            drive_link = upload_via_apps_script(
                 ttd_file.getvalue(),
                 filename,
             )
