@@ -1,0 +1,1 @@
+Timestamp	Email Address	Regional Corpu	Batch	Nama Lengkap	Personal Number	Unit Kerja	Link Tanda Tangan	File ID Tanda Tangan	Nama File TTD	PNG Transparan	Alat Bantu Pendeteksi Keaslian Uang	Alat Bantu Pendeteksi Keaslian Uang - Lainnya	Mesin Hitung Uang	Mesin Hitung Uang - Lainnya	Komputer dan Printer	Komputer dan Printer - Lainnya	Status Submit
