@@ -8,9 +8,9 @@ Author: Senior Python Developer
 import streamlit as st
 import gspread
 import io
+import base64
+import requests
 from google.oauth2.service_account import Credentials
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseUpload
 from datetime import datetime
 import re
 
@@ -27,7 +27,6 @@ MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
 # Google API Scopes
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
-    "https://www.googleapis.com/auth/drive",
 ]
 
 # Pilihan Dropdown
@@ -97,9 +96,6 @@ def get_gspread_client(creds):
     return gspread.authorize(creds)
 
 
-def get_drive_service(creds):
-    """Buat Google Drive service dari credentials."""
-    return build("drive", "v3", credentials=creds)
 
 
 # ─────────────────────────────────────────────
@@ -145,47 +141,38 @@ def validate_png_file(uploaded_file) -> tuple[bool, str]:
 
 
 # ─────────────────────────────────────────────
-# UPLOAD KE GOOGLE DRIVE
+# UPLOAD KE IMGBB
 # ─────────────────────────────────────────────
 
-def upload_to_drive(drive_service, file_bytes: bytes, filename: str, folder_id: str) -> str:
+def upload_to_imgbb(file_bytes: bytes, filename: str) -> str:
     """
-    Upload file PNG ke Google Drive folder tertentu.
-    Set permission agar bisa diakses via link publik.
+    Upload file PNG ke ImgBB (layanan image hosting gratis).
+    Tidak memerlukan Google Drive quota.
 
     Returns:
-        URL shareable file di Google Drive
+        URL direct view gambar di ImgBB
     """
-    file_metadata = {
-        "name": filename,
-        "parents": [folder_id],
-    }
+    api_key = st.secrets["imgbb"]["api_key"]
+    b64_image = base64.b64encode(file_bytes).decode("utf-8")
 
-    media = MediaIoBaseUpload(
-        io.BytesIO(file_bytes),
-        mimetype="image/png",
-        resumable=False,
+    response = requests.post(
+        "https://api.imgbb.com/1/upload",
+        data={
+            "key": api_key,
+            "image": b64_image,
+            "name": filename,
+        },
+        timeout=30,
     )
 
-    uploaded_file = drive_service.files().create(
-        body=file_metadata,
-        media_body=media,
-        fields="id",
-        supportsAllDrives=True,
-    ).execute()
+    if response.status_code != 200:
+        raise Exception(f"ImgBB upload gagal: {response.status_code} — {response.text}")
 
-    file_id = uploaded_file.get("id")
+    result = response.json()
+    if not result.get("success"):
+        raise Exception(f"ImgBB error: {result}")
 
-    # Set permission: anyone with link can view
-    drive_service.permissions().create(
-        fileId=file_id,
-        body={"type": "anyone", "role": "reader"},
-        supportsAllDrives=True,
-    ).execute()
-
-    # Buat link direct view
-    shareable_link = f"https://drive.google.com/file/d/{file_id}/view?usp=sharing"
-    return shareable_link
+    return result["data"]["url_viewer"]
 
 
 # ─────────────────────────────────────────────
@@ -447,7 +434,6 @@ def main():
         try:
             creds = get_google_credentials()
             gc = get_gspread_client(creds)
-            drive_service = get_drive_service(creds)
 
             # Buat nama file TTD
             timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -455,13 +441,10 @@ def main():
             safe_pn = re.sub(r"[^a-zA-Z0-9]", "_", form_data["personal_number"])
             filename = f"TTD_{safe_pn}_{safe_name}_{timestamp_str}.png"
 
-            # Upload ke Google Drive
-            folder_id = st.secrets["google_drive"]["folder_id"]
-            drive_link = upload_to_drive(
-                drive_service,
+            # Upload ke ImgBB
+            drive_link = upload_to_imgbb(
                 ttd_file.getvalue(),
                 filename,
-                folder_id,
             )
 
             # Simpan ke Google Sheets
