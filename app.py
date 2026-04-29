@@ -141,38 +141,56 @@ def validate_png_file(uploaded_file) -> tuple[bool, str]:
 
 
 # ─────────────────────────────────────────────
-# UPLOAD KE IMGBB
+# UPLOAD KE CLOUDINARY
 # ─────────────────────────────────────────────
 
-def upload_to_imgbb(file_bytes: bytes, filename: str) -> str:
+def upload_to_cloudinary(file_bytes: bytes, filename: str) -> str:
     """
-    Upload file PNG ke ImgBB (layanan image hosting gratis).
-    Tidak memerlukan Google Drive quota.
+    Upload file PNG ke Cloudinary (production-grade image hosting).
+    Free plan: 25 kredit/bulan — cukup untuk ribuan TTD.
 
     Returns:
-        URL direct view gambar di ImgBB
+        URL secure file di Cloudinary
     """
-    api_key = st.secrets["imgbb"]["api_key"]
-    b64_image = base64.b64encode(file_bytes).decode("utf-8")
+    import hashlib
+    import time
+
+    cloud_name = st.secrets["cloudinary"]["cloud_name"]
+    api_key    = st.secrets["cloudinary"]["api_key"]
+    api_secret = st.secrets["cloudinary"]["api_secret"]
+
+    # Buat signature untuk authenticated upload
+    timestamp  = str(int(time.time()))
+    folder     = "ttd_peserta"
+    public_id  = filename.replace(".png", "")
+
+    # String yang di-sign: harus urut alphabetically
+    sign_str = f"folder={folder}&public_id={public_id}&timestamp={timestamp}{api_secret}"
+    signature = hashlib.sha1(sign_str.encode("utf-8")).hexdigest()
+
+    upload_url = f"https://api.cloudinary.com/v1_1/{cloud_name}/image/upload"
 
     response = requests.post(
-        "https://api.imgbb.com/1/upload",
+        upload_url,
         data={
-            "key": api_key,
-            "image": b64_image,
-            "name": filename,
+            "api_key":   api_key,
+            "timestamp": timestamp,
+            "signature": signature,
+            "folder":    folder,
+            "public_id": public_id,
         },
-        timeout=30,
+        files={"file": (filename, file_bytes, "image/png")},
+        timeout=60,
     )
 
     if response.status_code != 200:
-        raise Exception(f"ImgBB upload gagal: {response.status_code} — {response.text}")
+        raise Exception(f"Cloudinary upload gagal: {response.status_code} — {response.text}")
 
     result = response.json()
-    if not result.get("success"):
-        raise Exception(f"ImgBB error: {result}")
+    if "secure_url" not in result:
+        raise Exception(f"Cloudinary error: {result}")
 
-    return result["data"]["url_viewer"]
+    return result["secure_url"]
 
 
 # ─────────────────────────────────────────────
@@ -441,8 +459,8 @@ def main():
             safe_pn = re.sub(r"[^a-zA-Z0-9]", "_", form_data["personal_number"])
             filename = f"TTD_{safe_pn}_{safe_name}_{timestamp_str}.png"
 
-            # Upload ke ImgBB
-            drive_link = upload_to_imgbb(
+            # Upload ke Cloudinary
+            drive_link = upload_to_cloudinary(
                 ttd_file.getvalue(),
                 filename,
             )
