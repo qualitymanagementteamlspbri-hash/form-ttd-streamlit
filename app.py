@@ -60,27 +60,15 @@ SHEET_HEADERS = [
 
 @st.cache_resource(show_spinner=False)
 def get_google_credentials():
-    """
-    Ambil credentials dari st.secrets (service account JSON).
-    Di-cache agar tidak rebuild setiap interaksi.
-    Menangani semua variasi format private_key:
-      - literal \n  (dari TOML single-quote / copy-paste JSON)
-      - \r\n        (Windows line endings)
-      - newline asli (dari TOML triple-quote)
-    """
+    """Ambil credentials dari st.secrets. Menangani semua format private_key."""
     service_account_info = dict(st.secrets["gcp_service_account"])
 
     pk = service_account_info["private_key"]
 
-    # Normalisasi Windows line endings (
- → 
-)
+    # Hapus Windows line endings jika ada
     pk = pk.replace("\r\n", "\n")
 
-    # Jika private_key berisi literal 
- (dua karakter: \ + n),
-    # konversi ke newline asli. Ini terjadi saat copy-paste dari JSON.
-    # Cukup cek apakah belum ada newline asli di dalam key.
+    # Konversi literal backslash-n menjadi newline asli
     if "\\n" in pk:
         pk = pk.replace("\\n", "\n")
 
