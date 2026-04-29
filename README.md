@@ -1,147 +1,234 @@
-# Streamlit Form Data Peserta + Validasi TTD PNG + Google Sheets + Google Drive
+# 📋 Form Data Peserta — Streamlit App
 
-Project ini digunakan untuk mengumpulkan data peserta dengan ketentuan tanda tangan wajib format PNG. Data form masuk ke Google Sheets, sedangkan file tanda tangan tersimpan di Google Drive dan link-nya otomatis tercatat di spreadsheet.
+Aplikasi form pengumpulan data peserta berbasis Streamlit dengan integrasi **Google Sheets** dan **Google Drive**. Validasi file PNG ketat untuk Tanda Tangan digital.
 
-## Fitur
+---
 
-- Validasi tanda tangan wajib PNG.
-- Menolak JPG/JPEG/PDF/HEIC atau file yang hanya diganti ekstensi menjadi `.png`.
-- Upload file tanda tangan ke Google Drive.
-- Link Google Drive otomatis masuk ke Google Sheets.
-- Anti-duplikat berdasarkan Personal Number.
-- Retry otomatis untuk mengurangi risiko gagal karena rate limit sementara.
-- Preview admin opsional.
+## ✅ Fitur Utama
 
-## Struktur File
+- Form data peserta lengkap (13 field)
+- Validasi PNG ketat: ekstensi + MIME type + magic bytes
+- Upload TTD ke Google Drive, nama file otomatis
+- Simpan semua data ke Google Sheets dengan timestamp
+- Link Drive TTD masuk otomatis ke kolom spreadsheet
+- Proteksi double-submit dalam satu sesi
+- Siap deploy ke Streamlit Cloud
 
-```text
-streamlit_form_ttd_png/
-├── app.py
-├── requirements.txt
-├── google_sheet_headers.txt
-├── README.md
-└── .streamlit/
-    └── secrets.toml.example
+---
+
+## 📁 Struktur Project
+
+```
+project/
+├── app.py                    # Aplikasi utama
+├── requirements.txt          # Dependensi Python
+├── .streamlit/
+│   └── secrets.toml          # Kredensial (jangan di-commit!)
+├── .gitignore
+└── README.md
 ```
 
-## Persiapan Google Cloud
-
-1. Buka Google Cloud Console.
-2. Buat project baru atau gunakan project yang sudah ada.
-3. Aktifkan API berikut:
-   - Google Sheets API
-   - Google Drive API
-4. Buat Service Account.
-5. Buat key JSON untuk Service Account.
-6. Simpan informasi JSON tersebut untuk dimasukkan ke Streamlit Secrets.
-
-## Persiapan Google Sheets
-
-1. Buat Google Sheets baru.
-2. Buat worksheet dengan nama:
-
-```text
-Data Peserta
+### `.gitignore` yang disarankan
+```
+.streamlit/secrets.toml
+*.json
+__pycache__/
+.env
 ```
 
-3. Copy header dari file `google_sheet_headers.txt` ke baris pertama Google Sheets.
-4. Share Google Sheets ke email Service Account sebagai Editor.
+---
 
-Contoh email Service Account:
+## 🔧 Setup Google Cloud (Langkah demi Langkah)
 
-```text
-nama-service-account@project-id.iam.gserviceaccount.com
-```
+### 1. Buat Google Cloud Project
 
-## Persiapan Google Drive
+1. Buka [console.cloud.google.com](https://console.cloud.google.com)
+2. Klik **"Select a project"** → **"New Project"**
+3. Beri nama project (misal: `form-peserta`) → **Create**
 
-1. Buat folder Google Drive untuk menyimpan TTD.
-2. Copy Folder ID dari URL folder.
+---
 
-Contoh URL:
+### 2. Enable Google Sheets API & Google Drive API
 
-```text
-https://drive.google.com/drive/folders/1AbCdEfGhIjKlMnOpQrStUvWxYz
-```
+1. Di Google Cloud Console, buka **"APIs & Services" → "Library"**
+2. Cari **"Google Sheets API"** → klik → **Enable**
+3. Cari **"Google Drive API"** → klik → **Enable**
 
-Folder ID-nya adalah:
+---
 
-```text
-1AbCdEfGhIjKlMnOpQrStUvWxYz
-```
+### 3. Buat Service Account
 
-3. Share folder tersebut ke email Service Account sebagai Editor.
+1. Buka **"APIs & Services" → "Credentials"**
+2. Klik **"+ Create Credentials" → "Service Account"**
+3. Isi nama (misal: `streamlit-form`) → **Create and Continue**
+4. Role: pilih **"Editor"** → **Continue** → **Done**
+5. Klik service account yang baru dibuat
+6. Tab **"Keys"** → **"Add Key" → "Create new key"**
+7. Pilih format **JSON** → **Create**
+8. File JSON otomatis terunduh — **simpan baik-baik, ini rahasia!**
 
-## Konfigurasi Streamlit Secrets
+---
 
-Untuk deployment di Streamlit Cloud:
+### 4. Share Google Sheets ke Service Account
 
-1. Upload project ini ke GitHub.
-2. Buka Streamlit Cloud.
-3. Deploy repository.
-4. Masuk ke menu App > Settings > Secrets.
-5. Isi secrets seperti contoh berikut.
+1. Buka file JSON service account → salin nilai `client_email`
+   (contoh: `streamlit-form@nama-project.iam.gserviceaccount.com`)
+2. Buka **Google Spreadsheet** Anda
+3. Klik **Share** (pojok kanan atas)
+4. Paste email service account → pilih role **"Editor"** → **Send**
+
+> 💡 Buat tab baru di spreadsheet bernama **"Data Peserta"** (atau sesuai `sheet_name` di secrets.toml)
+
+---
+
+### 5. Share Folder Google Drive ke Service Account
+
+1. Buka **Google Drive** → buat folder baru (misal: `TTD Peserta`)
+2. Klik kanan folder → **Share**
+3. Paste email service account → pilih role **"Editor"** → **Send**
+4. Salin **ID folder** dari URL:
+   ```
+   https://drive.google.com/drive/folders/FOLDER_ID_INI
+   ```
+
+---
+
+### 6. Siapkan secrets.toml
+
+Buka file `service-account-key.json` yang diunduh, lalu isi `.streamlit/secrets.toml`:
 
 ```toml
-SPREADSHEET_ID = "ISI_ID_GOOGLE_SHEET_ANDA"
-WORKSHEET_NAME = "Data Peserta"
-DRIVE_FOLDER_ID = "ISI_ID_FOLDER_GOOGLE_DRIVE_ANDA"
-MAX_FILE_MB = 5
-ADMIN_PASSWORD = "password-admin-opsional"
+[google_sheets]
+spreadsheet_id = "ID_SPREADSHEET_ANDA"
+sheet_name     = "Data Peserta"
+
+[google_drive]
+folder_id = "ID_FOLDER_DRIVE_ANDA"
 
 [gcp_service_account]
-type = "service_account"
-project_id = "ISI_PROJECT_ID"
-private_key_id = "ISI_PRIVATE_KEY_ID"
-private_key = "-----BEGIN PRIVATE KEY-----\nISI_PRIVATE_KEY_ANDA\n-----END PRIVATE KEY-----\n"
-client_email = "nama-service-account@project-id.iam.gserviceaccount.com"
-client_id = "ISI_CLIENT_ID"
-auth_uri = "https://accounts.google.com/o/oauth2/auth"
-token_uri = "https://oauth2.googleapis.com/token"
+type                        = "service_account"
+project_id                  = "isi dari file JSON"
+private_key_id              = "isi dari file JSON"
+private_key                 = "isi dari file JSON (termasuk -----BEGIN...-----)"
+client_email                = "isi dari file JSON"
+client_id                   = "isi dari file JSON"
+auth_uri                    = "https://accounts.google.com/o/oauth2/auth"
+token_uri                   = "https://oauth2.googleapis.com/token"
 auth_provider_x509_cert_url = "https://www.googleapis.com/oauth2/v1/certs"
-client_x509_cert_url = "ISI_CLIENT_CERT_URL"
-universe_domain = "googleapis.com"
+client_x509_cert_url        = "isi dari file JSON"
+universe_domain             = "googleapis.com"
 ```
 
-Catatan penting:
+> ⚠️ **Pastikan** nilai `private_key` menyertakan newline `\n` dengan benar. Salin persis dari file JSON.
 
-- Jangan upload credential asli ke GitHub public.
-- Jangan commit file `secrets.toml` asli.
-- Gunakan menu Secrets di Streamlit Cloud.
+---
 
-## Cara Menjalankan Lokal
+## 🚀 Deployment ke Streamlit Cloud
 
-Buat file lokal:
+### Langkah:
 
-```text
-.streamlit/secrets.toml
-```
+1. **Push project ke GitHub** (pastikan `secrets.toml` ada di `.gitignore`!)
+   ```bash
+   git init
+   git add app.py requirements.txt README.md .gitignore
+   git commit -m "initial commit"
+   git remote add origin https://github.com/username/nama-repo.git
+   git push -u origin main
+   ```
 
-Isi sesuai contoh `secrets.toml.example`, lalu jalankan:
+2. **Buka** [share.streamlit.io](https://share.streamlit.io) → login dengan akun GitHub
+
+3. Klik **"New app"**
+
+4. Pilih repository dan branch → set **Main file path**: `app.py`
+
+5. Klik **"Advanced settings"** → tab **"Secrets"**
+
+6. **Paste seluruh isi `secrets.toml`** ke dalam kotak Secrets
+
+7. Klik **"Deploy!"**
+
+8. Tunggu build selesai (biasanya 1–3 menit) → app siap diakses via URL publik
+
+---
+
+## 🗂 Struktur Kolom Google Sheets (otomatis dibuat)
+
+| Kolom | Keterangan |
+|-------|-----------|
+| Timestamp | Waktu submit (YYYY-MM-DD HH:MM:SS) |
+| Email Address | Email peserta |
+| Regional Corpu | Regional peserta |
+| Batch | Batch pelatihan |
+| Nama Lengkap | Nama peserta |
+| Personal Number | Nomor pegawai |
+| Unit Kerja | Unit/cabang kerja |
+| Link Tanda Tangan | URL file PNG di Google Drive |
+| Alat Bantu Pendeteksi Keaslian Uang | Pilihan dropdown |
+| Keterangan Alat Bantu Lainnya | Isi jika pilih "Lainnya" |
+| Mesin Hitung Uang | Pilihan dropdown |
+| Keterangan Mesin Hitung Lainnya | Isi jika pilih "Lainnya" |
+| Komputer dan Printer | Pilihan dropdown |
+| Keterangan Komputer Printer Lainnya | Isi jika pilih "Lainnya" |
+
+---
+
+## ⚙️ Menjalankan Secara Lokal (Opsional)
 
 ```bash
+# 1. Clone repo
+git clone https://github.com/username/nama-repo.git
+cd nama-repo
+
+# 2. Install dependensi
 pip install -r requirements.txt
+
+# 3. Buat file secrets
+mkdir -p .streamlit
+# Isi .streamlit/secrets.toml sesuai panduan di atas
+
+# 4. Jalankan
 streamlit run app.py
 ```
 
-## Deployment ke GitHub dan Streamlit Cloud
+---
 
-```bash
-git init
-git add .
-git commit -m "Initial Streamlit form TTD PNG"
-git branch -M main
-git remote add origin https://github.com/USERNAME/NAMA_REPOSITORY.git
-git push -u origin main
+## 🔄 Alur Kerja Aplikasi
+
+```
+Peserta buka form
+        ↓
+Isi semua field + upload file PNG TTD
+        ↓
+Klik "Submit Data"
+        ↓
+Validasi semua field (client & server side)
+        ↓
+Validasi PNG ketat (ekstensi + MIME + magic bytes + ukuran)
+        ↓
+[Jika ada error] → tampilkan pesan error, berhenti
+        ↓
+[Jika valid] → upload PNG ke Google Drive folder
+        ↓
+Dapat link shareable file TTD
+        ↓
+Simpan semua data + link TTD ke Google Sheets
+        ↓
+Tampilkan pesan sukses ✅
 ```
 
-Setelah itu deploy via Streamlit Cloud dengan entry point:
+---
 
-```text
-app.py
+## 🛠 Kustomisasi Dropdown
+
+Edit bagian ini di `app.py` untuk mengubah pilihan dropdown:
+
+```python
+DROPDOWN_ALAT_BANTU      = ["-- Pilih --", "Tidak Ada", "Glory", "Dynamic", "Secure", "Lainnya"]
+DROPDOWN_MESIN_HITUNG    = ["-- Pilih --", "Tidak Ada", "Glory", "Dynamic", "NCL", "Lainnya"]
+DROPDOWN_KOMPUTER_PRINTER = ["-- Pilih --", "Tidak Ada", "PC + Printer", "Laptop + Printer", "Printer Only", "Lainnya"]
 ```
 
-## Catatan untuk 1.600 Peserta
+---
 
-Aplikasi sudah ditambahkan retry otomatis. Untuk mengurangi risiko submit bersamaan, disarankan pembukaan form dilakukan per batch atau per Regional Corpu.
-
+*Dibuat dengan ❤️ menggunakan Streamlit + Google Workspace API*
